@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-01T15:26:18.979Z",
+  "lastBlock": {
+    "at": "2026-03-10T13:15:41.850Z",
+    "hash": "0000000000dfc9a8",
+    "difficulty": 153500000,
+    "submitResult": "accepted",
+    "worker": "Z11-3",
+    "reward": "1.25 ZEC",
+    "height": 3267605
+  },
+  "totals": {
+    "blocks": 1,
+    "blockCandidates": 1,
+    "blockSubmitsRejected": 0,
+    "shares": 3716,
+    "rejectedShares": 113
+  },
+  "allTimeBestShare": {
+    "difficulty": 153500000,
+    "hash": "0000000000dfc9a8",
+    "worker": "Z11-3",
+    "at": "2026-03-10T13:15:41.850Z"
+  },
+  "blockHistory": []
+}

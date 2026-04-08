@@ -1,0 +1,1 @@
+cmd_Release/equihashverify.node := ln -f "Release/obj.target/equihashverify.node" "Release/equihashverify.node" 2>/dev/null || (rm -rf "Release/equihashverify.node" && cp -af "Release/obj.target/equihashverify.node" "Release/equihashverify.node")

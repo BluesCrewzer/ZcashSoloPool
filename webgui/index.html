@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zcash Solo Pool Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <h1>Zcash Solo Pool Dashboard</h1>
+      <p>Live stats for connected miners, pool performance, and Zcash network health.</p>
+    </header>
+
+    <main class="dashboard">
+      <section class="panel" aria-labelledby="network-title">
+        <div class="panel-header">
+          <h2 id="network-title">Zcash Network Statistics</h2>
+        </div>
+        <div class="card-grid two-column">
+          <article class="stat-card">
+            <h3>Network Hashrate</h3>
+            <p id="network-hashrate" class="stat-value">--</p>
+          </article>
+          <article class="stat-card">
+            <h3>Network Difficulty</h3>
+            <p id="network-difficulty" class="stat-value">--</p>
+          </article>
+          <article class="stat-card">
+            <h3>Zebrad Connections</h3>
+            <p id="node-connections" class="stat-value">--</p>
+            <p id="node-peers" class="stat-subvalue">inbound: -- | outbound: --</p>
+          </article>
+          <article class="stat-card">
+            <h3>Zebrad Build</h3>
+            <p id="node-version" class="stat-value">--</p>
+            <p id="node-software" class="stat-subvalue">--</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="pool-overview-title">
+        <div class="panel-header">
+          <h2 id="pool-overview-title">Pool Overview</h2>
+          <div class="panel-header-right">
+            <span id="last-updated" class="muted">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card-grid">
+          <article class="stat-card">
+            <h3>Pool Hashrate</h3>
+            <p id="pool-hashrate" class="stat-value">--</p>
+          </article>
+          <article class="stat-card">
+            <h3>Connected Miners</h3>
+            <p id="connected-miners" class="stat-value">--</p>
+          </article>
+          <article class="stat-card">
+            <h3>Pool Uptime</h3>
+            <p id="pool-uptime" class="stat-value">--</p>
+          </article>
+          <article class="stat-card">
+            <h3>Est. Time to Block</h3>
+            <p id="est-time-to-block" class="stat-value">--</p>
+            <p id="est-time-to-block-detail" class="stat-subvalue">--</p>
+          </article>
+          <article class="stat-card">
+            <h3>Block Effort</h3>
+            <p id="block-effort" class="stat-value">--</p>
+            <div id="block-effort-bar-wrap" class="effort-bar-wrap">
+              <div id="block-effort-bar" class="effort-bar"></div>
+            </div>
+            <p id="block-effort-detail" class="stat-subvalue">--</p>
+          </article>
+          <article class="stat-card">
+            <h3>Pool Luck</h3>
+            <p id="pool-luck" class="stat-value">--</p>
+            <p id="pool-luck-detail" class="stat-subvalue">avg over found blocks</p>
+          </article>
+          <article class="stat-card">
+            <h3>Blocks Found</h3>
+            <p id="blocks-found" class="stat-value">--</p>
+          </article>
+          <article class="stat-card">
+            <h3>Total Shares</h3>
+            <p id="total-accepted" class="stat-value">--</p>
+            <p id="total-rejected" class="stat-subvalue">rejected: --</p>
+          </article>
+          <article class="stat-card">
+            <h3>All-Time Best Share</h3>
+            <p id="alltime-best-difficulty" class="stat-value">--</p>
+            <p id="alltime-best-miner" class="stat-subvalue">miner: --</p>
+            <p id="alltime-best-time" class="stat-subvalue"></p>
+          </article>
+          <article class="stat-card">
+            <h3>Session Top Shares</h3>
+            <p id="highest-share-difficulty" class="stat-value">--</p>
+            <p id="highest-share-miner" class="stat-subvalue">miner: --</p>
+            <ol id="top-share-list" class="top-share-list">
+              <li>--</li>
+            </ol>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="miners-title">
+        <div class="panel-header">
+          <h2 id="miners-title">Connected Miners</h2>
+        </div>
+        <div class="table-wrapper">
+          <table id="miners-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort-key="name">Miner</th>
+                <th class="sortable" data-sort-key="hashrate">Hashrate</th>
+                <th class="sortable" data-sort-key="accepted">Accepted</th>
+                <th class="sortable" data-sort-key="rejected">Rejected</th>
+                <th class="sortable" data-sort-key="stale">Stale</th>
+                <th class="sortable" data-sort-key="blocksFound">Blocks</th>
+                <th class="sortable" data-sort-key="highestDifficulty">Highest Diff</th>
+                <th class="sortable" data-sort-key="connected">Connected</th>
+                <th class="sortable" data-sort-key="ping">Ping</th>
+                <th class="sortable" data-sort-key="lastShare">Last Share</th>
+              </tr>
+            </thead>
+            <tbody id="miner-rows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="blocks-title">
+        <div class="panel-header">
+          <h2 id="blocks-title">Recent Blocks (Last 10)</h2>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Height</th>
+                <th>Hash</th>
+                <th>Difficulty</th>
+                <th>Luck</th>
+                <th>Reward</th>
+                <th>Confirmed At</th>
+                <th>Mined By</th>
+              </tr>
+            </thead>
+            <tbody id="block-rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <template id="empty-row-template">
+      <tr>
+        <td colspan="10" class="empty-row">No data available.</td>
+      </tr>
+    </template>
+
+    <script src="config.js?v=20260306" defer></script>
+    <script src="app.js?v=20260310" defer></script>
+  </body>
+</html>

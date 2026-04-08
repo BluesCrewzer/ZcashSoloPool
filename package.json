@@ -1,0 +1,20 @@
+{
+  "name": "zcashsolopool",
+  "version": "0.5.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js ./config.json"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "bs58check": "^4.0.0",
+    "equihashverify": "file:./native/equihashverify"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BluesCrewzer/ZcashSoloPool"
+  },
+  "description": "Zcash solo mining pool"
+}

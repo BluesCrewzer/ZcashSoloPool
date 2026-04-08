@@ -1,0 +1,80 @@
+{
+  "zcash": {
+    "rpcHost": "127.0.0.1",
+    "rpcPort": 8232,
+    "rpcCookiePath": "/var/lib/zebrad/.cookie",
+    "walletAddress": "t1YourTransparentAddressHere"
+  },
+  "pool": {
+    "name": "ZCashSoloPool",
+    "host": "0.0.0.0",
+    "port": 3333,
+    "difficulty": 1,
+    "shareTarget": "00003fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "solutionRateScale": 1000,
+    "hashrateWindowSeconds": 300,
+    "minerPing": {
+      "enabled": false,
+      "intervalMinutes": 5,
+      "timeoutMs": 1500,
+      "logResults": true
+    },
+    "logSubmissions": false,
+    "submitAudit": true,
+    "blockSubmitDedupWindowMs": 120000,
+    "jobResendDelayMs": 800,
+    "jobRefresh": {
+      "enabled": true,
+      "intervalSeconds": 30,
+      "cleanJobs": false
+    },
+    "vardiff": {
+      "enabled": true,
+      "initialDifficulty": 1,
+      "minDifficulty": 0.5,
+      "maxDifficulty": 4096,
+      "targetTime": 15,
+      "retargetTime": 90,
+      "variancePercent": 25,
+      "minSamples": 6
+    },
+    "useSetTarget": true,
+    "logOutbound": false,
+    "notifyFormat": "inno",
+    "notifyPreset": "headerle",
+    "extranonce2Size": 0,
+    "notifyReservedMode": "zero32",
+    "notifyVersionEndian": "le",
+    "protocolMode": "zip301",
+    "shareValidationMode": "local",
+    "connectionAcl": {
+      "enabled": false,
+      "allowCidrs": [
+        "192.168.0.0/16",
+        "10.0.0.0/8"
+      ],
+      "denyCidrs": [],
+      "banOnBadJson": true,
+      "maxBadJsonBeforeClose": 3,
+      "badJsonBanSeconds": 900,
+      "logDenied": true
+    },
+    "maxConnectionsPerIp": 8
+  },
+  "api": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 8080,
+    "apiKey": "",
+    "corsOrigin": ""
+  },
+  "webgui": {
+    "enabled": true,
+    "host": "0.0.0.0",
+    "port": 8086
+  },
+  "logging": {
+    "level": "info",
+    "file": ""
+  }
+}

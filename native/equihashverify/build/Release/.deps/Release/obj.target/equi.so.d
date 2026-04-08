@@ -1,0 +1,1 @@
+cmd_Release/obj.target/equi.so := g++ -o Release/obj.target/equi.so -shared -pthread -rdynamic -m64  -Wl,-soname=equi.so -Wl,--whole-archive ./Release/obj.target/libequi/src/equi/equi.o ./Release/obj.target/libequi/src/equi/endian.o -Wl,--no-whole-archive -lsodium
