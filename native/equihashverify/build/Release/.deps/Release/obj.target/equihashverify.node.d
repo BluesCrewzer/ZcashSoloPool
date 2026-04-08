@@ -1,0 +1,1 @@
+cmd_Release/obj.target/equihashverify.node := g++ -o Release/obj.target/equihashverify.node -shared -pthread -rdynamic -m64 -Wl,-rpath=\$$ORIGIN/ -Wl,-rpath-link=\./Release/  -Wl,-soname=equihashverify.node -Wl,--start-group Release/obj.target/equihashverify/equihashverify.o Release/obj.target/equi.so -Wl,--end-group -lsodium
