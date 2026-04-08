@@ -1,5 +1,22 @@
 # ZcashSoloPool
 
+I was in search of a solo mining project and found that none were working, mainly due to ZcashD deprecation and other dependency issues. I built this from scratch for Zebrad node only, in mind for the home/hobby miner and to learn how it all works. I spent several months working on it as I could. The first block found with this software was block#3267605, I have about 750ksols in my hobby farm.
+
+- Not inteneded for large scale, although it can handle a large number of miners
+- No pay system, pays to only one address configured in the Zebrad.toml
+- Do not expsose to the ineternet unless you know what you are doing, there is some stratum hardning built in
+  
+There are no dev fees, if this works for you, please consider a donation to support my work.
+
+ZCASH: t1SP4j14QSh9LJp3vKMgk7Lqqad8bL93AUT
+
+BTC: bc1q9raqlpk0h3kgapd695mwys049wpg3klrc3gds7
+
+ETH: 0xC423754eF14fC163c61E152162C78df531811426
+
+DOGE: DRLFCoTGAED9ByE8Rrdg4D7Z64tzNWBN5G
+
+
 Node.js Zcash solo mining pool with:
 - local share validation (`equihashverify` native module),
 - ZIP-301 style Stratum flow for ASIC compatibility,
@@ -9,7 +26,6 @@ Node.js Zcash solo mining pool with:
 - built-in Web GUI (served from `./webgui`, auto-wired to the API),
 - persisted pool state across restarts (block history, best share, counts).
 
-This project is designed for self-hosted solo mining setups (home/lab/small private deployment). Default bind targets keep API private (`127.0.0.1`) while Stratum listens on all interfaces for miners.
 
 ## Features
 
@@ -46,7 +62,7 @@ This project is designed for self-hosted solo mining setups (home/lab/small priv
 
 ## 1) Prepare zebrad
 
-Ensure your node is fully synced and exposes RPC on the host/port in your config (defaults: `127.0.0.1:8232`).
+Ensure your node is fully synced, has many peers (this is key) and exposes RPC on the host/port in your config (defaults: `127.0.0.1:8232`).
 
 Pool uses cookie auth only:
 - `zcash.rpcCookiePath` must point to a file like:
@@ -389,7 +405,6 @@ Additional checks:
 ## Recent changes (2025-03-17)
 
 ### Security fixes
-- **API host default** (`config.json`): `api.host` changed from `0.0.0.0` to `127.0.0.1` — API no longer binds to all interfaces by default
 - **Timing-safe API key comparison** (`lib/apiServer.js`): replaced plain string equality with `crypto.timingSafeEqual()`; key is accepted via `X-API-Key` header only (query-param auth removed)
 - **Cookie path traversal** (`lib/zcashRpc.js`): cookie path is now resolved with `path.resolve()` after `~` expansion to neutralize any `..` sequences
 
