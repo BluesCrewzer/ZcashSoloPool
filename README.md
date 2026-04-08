@@ -17,7 +17,7 @@ There are no dev fees, if this works for you, please consider a donation to supp
 - DOGE: DRLFCoTGAED9ByE8Rrdg4D7Z64tzNWBN5G
 
 
-Node.js Zcash solo mining pool with:
+## Node.js Zcash solo mining pool with:
 - local share validation (`equihashverify` native module),
 - ZIP-301 style Stratum flow for ASIC compatibility,
 - VarDiff,
