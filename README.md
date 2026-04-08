@@ -8,13 +8,13 @@ I was in search of a solo mining project and found that none were working, mainl
   
 There are no dev fees, if this works for you, please consider a donation to support my work.
 
-ZCASH: t1SP4j14QSh9LJp3vKMgk7Lqqad8bL93AUT
+-ZCASH: t1SP4j14QSh9LJp3vKMgk7Lqqad8bL93AUT
 
-BTC: bc1q9raqlpk0h3kgapd695mwys049wpg3klrc3gds7
+-BTC: bc1q9raqlpk0h3kgapd695mwys049wpg3klrc3gds7
 
-ETH: 0xC423754eF14fC163c61E152162C78df531811426
+-ETH: 0xC423754eF14fC163c61E152162C78df531811426
 
-DOGE: DRLFCoTGAED9ByE8Rrdg4D7Z64tzNWBN5G
+-DOGE: DRLFCoTGAED9ByE8Rrdg4D7Z64tzNWBN5G
 
 
 Node.js Zcash solo mining pool with:
