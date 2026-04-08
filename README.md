@@ -1,3 +1,5 @@
+<img width="1866" height="1080" alt="Screenshot 2026-04-08 at 09-01-09 Zcash Solo Pool Dashboard" src="https://github.com/user-attachments/assets/86bdbb09-3dd6-4137-836b-88f5a4b5aa27" />
+
 # ZcashSoloPool
 
 I was in search of a solo mining project and found that none were working, mainly due to ZcashD deprecation and other dependency issues. I built this from scratch for Zebrad node only, in mind for the home/hobby miner and to learn how it all works. I spent several months working on it as I could. The first block found with this software was block#3267605, I have about 750ksols in my hobby farm.
