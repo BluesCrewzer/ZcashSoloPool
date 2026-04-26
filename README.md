@@ -7,7 +7,9 @@ I was in search of a solo mining project and found that none were working, mainl
 - Not inteneded for large scale, although it can handle a large number of miners
 - No pay system, pays to only one address configured in the Zebrad.toml
 - Do not expsose to the ineternet unless you know what you are doing, there is some stratum hardning built in
-  
+
+For guides and information check my website https://zcashsolomining.com/
+
 There are no dev fees, if this works for you, please consider a donation to support my work.
 
 - ZCASH: t1SP4j14QSh9LJp3vKMgk7Lqqad8bL93AUT
