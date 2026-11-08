@@ -116,7 +116,10 @@ class ZCashSoloPool {
         this.stats.blockSubmitsRejected = saved.totals.blockSubmitsRejected || 0;
       }
       if (saved.allTimeBestShare && saved.allTimeBestShare.difficulty > 0) {
-        this.allTimeBestShare = saved.allTimeBestShare;
+        // Re-score from the hash: state saved before 0.6.0 holds share-target units.
+        const best = saved.allTimeBestShare;
+        const rescored = chain.shareDifficulty(best.hash, best.chain);
+        this.allTimeBestShare = rescored ? { ...best, difficulty: rescored } : best;
       }
       if (Array.isArray(saved.blockHistory)) {
         this.blockHistory = saved.blockHistory;
@@ -320,12 +323,6 @@ class ZCashSoloPool {
     } finally {
       this.pingSweepInFlight = false;
     }
-  }
-
-  computeShareDifficulty(assignedDifficulty, shareQuality) {
-    const base = this.parsePositiveNumber(assignedDifficulty) || 0;
-    const quality = this.parsePositiveNumber(shareQuality) || 1;
-    return base * quality;
   }
 
   formatScaledNumber(value, decimals = 3) {
@@ -665,7 +662,7 @@ class ZCashSoloPool {
           this.stats.lastShareAt = new Date().toISOString();
           this.stratum.respondSubmit(submission.client, submission.requestId, true, null);
           const assignedDifficulty = res.assignedDifficulty || submission.client.currentDifficulty;
-          const shareDifficulty = this.computeShareDifficulty(assignedDifficulty, res.shareQuality);
+          const shareDifficulty = chain.shareDifficulty(res.hash, this.cachedNetwork && this.cachedNetwork.chain);
           this.stratum.recordShareOutcome(submission.client, {
             accepted: true,
             hash: res.hash,
@@ -689,6 +686,7 @@ class ZCashSoloPool {
               hash: res.hash || null,
               worker: workerName,
               at: new Date().toISOString(),
+              chain: (this.cachedNetwork && this.cachedNetwork.chain) || null,
             };
             this.logger.info(
               `[AllTimeBest] New all-time best share! diff=${this.formatDifficulty(effectiveShareDiff)} worker=${workerName} hash=${(res.hash || "").substring(0, 16)}`
