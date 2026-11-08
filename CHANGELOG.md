@@ -67,3 +67,20 @@
 ### API hardening
 
 - Internal error responses no longer expose `e.message` details to clients. Error details are logged server-side only.
+
+## 0.6.0 (2026-11-08)
+
+### NU7
+- NU7 block spacing: effort, luck and time-to-block use 25 s from the node-reported NU7 activation height (75 s before). `pool.blockIntervalSeconds` is now an optional override.
+- Block reward display reads what the job's v5/v6 coinbase pays the pool address (about 0.4167 ZEC after NU7) instead of a fixed "1.25 ZEC"; `pool.blockReward` is the fallback.
+- API `/stats` and `/network` report `blockIntervalSeconds`; `/network` reports `nu7ActivationHeight`. The dashboard uses the API value.
+
+### Bug fixes
+- Fix: the height poll compared `getblockcount` (tip) with the template height (tip + 1), so it never matched and broadcast a clean job every 2 s, rejecting shares and blocks on jobs older than ~2 s as "Job Expired".
+- New blocks are taken from the `getblocktemplate` long poll, with a `getbestblockhash` poll every 2 s as the fallback. A tip-triggered update whose template still builds on the current job's parent is dropped, so miners get one clean job per new tip.
+- A found block now refreshes work only if the tip moved.
+- Native addon: `binding.gyp` no longer forces `-std=c++17` (Node 24's V8 headers need C++20).
+
+### Other
+- Unit tests (`npm test`, node:test).
+- `node_modules/`, native build output, `pool-state.json` and the unused `zcash/` source tree are no longer tracked; `.gitignore` added.

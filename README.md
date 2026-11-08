@@ -54,13 +54,14 @@ There are no dev fees, if this works for you, please consider a donation to supp
 ## Requirements
 
 - Linux host (recommended for native module build/tooling).
-- Node.js 18+ (Node 20 LTS recommended).
+- Node.js 22 or 24 LTS (tested on 22.23 and 24.22).
 - `npm`.
 - Build tools for native addon compilation:
   - `python3`
   - `make`
   - `g++` (or equivalent C++ toolchain)
-- Zebrad node only (zcashd is not supported).
+  - libsodium headers (`libsodium-dev` on Debian/Ubuntu)
+- Zebrad 7.0.0 or newer (NU7 is active on mainnet since block 3,543,405). Zebra releases stop at an end-of-support height, so keep zebrad current. zcashd is not supported.
 - `zcash.walletAddress` must be a transparent P2PKH address (t1/tm). The pool validates that each `coinbasetxn` pays this address and will abort startup if it does not.
 - Access to the `zebrad` RPC cookie file (for auth).
 
@@ -76,6 +77,8 @@ Pool uses cookie auth only:
 The cookie file content must be:
 - `username:password`
 
+If zebrad runs with `enable_cookie_auth = false`, point `rpcCookiePath` at any readable file holding `user:pass`; zebrad ignores the credentials.
+
 If the pool cannot read the cookie file, startup will fail.
 
 ## 2) Install
@@ -89,6 +92,7 @@ npm install
 Notes:
 - This compiles `native/equihashverify`.
 - If build fails, install missing build dependencies and rerun `npm install`.
+- Run the unit tests with `npm test`.
 
 ## 3) Configure
 
@@ -155,7 +159,7 @@ Minimum required edits:
   "zcash": {
     "rpcHost": "127.0.0.1",
     "rpcPort": 8232,
-    "rpcCookiePath": "/home/jon/.cache/zebra/.cookie",
+    "rpcCookiePath": "/home/<user>/.cache/zebra/.cookie",
     "walletAddress": "tmYourTransparentAddress"
   },
   "api": {
@@ -282,8 +286,8 @@ curl http://127.0.0.1:8080/stats
 - `notifyFormat`, `notifyPreset`, `extranonce2Size`, `notifyReservedMode`, `notifyVersionEndian`: miner compatibility controls.
 - `shareValidationMode`: currently `local`.
 - `name`: display name for the pool in API responses (default `"ZCashSoloPool"`).
-- `blockIntervalSeconds`: target block interval in seconds for effort/luck calculation (default `75` for Zcash).
-- `blockReward`: display string for block reward (default `"1.25 ZEC"`).
+- `blockIntervalSeconds`: optional fixed block interval for effort/luck/time-to-block. Leave it unset: the pool uses 75 s before the node-reported NU7 activation height and 25 s from it on.
+- `blockReward`: fallback display string for the block reward. The pool normally shows what the current job's coinbase pays your address (about 0.4167 ZEC per block after NU7, plus your share of fees).
 - `vardiff.*`: variable difficulty controls.
 
 ### `webgui`
@@ -313,7 +317,7 @@ curl http://127.0.0.1:8080/stats
 - Logging: use `logging.level=info` for normal operation; set `logging.file` with rotation if running long-term, and only enable `debug` temporarily.
 - API/Web GUI security: expose API only on trusted networks; set `apiKey` and `corsOrigin` when the GUI is on another host; keep `api.host=127.0.0.1` unless you have firewall rules.
 - Ping sweep: leave disabled unless diagnosing connectivity; if enabled, use `intervalMinutes>=5` and `timeoutMs≈1500`.
-- Native addon: build with `npm install --build-from-source` on the deploy host to avoid ABI drift; prefer Node 20 LTS.
+- Native addon: build with `npm install --build-from-source` on the deploy host to avoid ABI drift; use Node 22 or 24 LTS.
 
 ## Deployment tips
 
@@ -368,7 +372,7 @@ To persist across reboots, add to `/etc/sysctl.d/99-pool.conf`.
 
 ### Native module build fails
 
-- Install build dependencies (`python3`, `make`, `g++`).
+- Install build dependencies (`python3`, `make`, `g++`, `libsodium-dev`).
 - Re-run `npm install`.
 
 ### Miners disconnect frequently / failover
@@ -405,6 +409,15 @@ Additional checks:
 - API key comparison uses `crypto.timingSafeEqual()` to prevent timing side-channel attacks.
 - API key is accepted via `X-API-Key` header only; query-parameter auth is not supported.
 - The RPC cookie path is canonicalized with `path.resolve()` before access to prevent directory traversal.
+
+## Recent changes (2026-11-08, v0.6.0: NU7)
+
+- **Job refresh loop fixed**: the old height poll compared `getblockcount` (the tip) with the template height (tip + 1), so against zebrad it sent miners a clean job every 2 s and rejected shares and blocks on jobs older than ~2 s as "Job Expired". Upgrade from 0.5.0.
+- **New blocks via long poll**: the pool long-polls `getblocktemplate`, so a new block reaches miners as soon as zebrad has it; a `getbestblockhash` poll every 2 s is the fallback. Miners get one clean job per new tip.
+- **NU7 block spacing**: effort, luck and time-to-block use 25 s blocks from the NU7 activation height (they were 3x off with 75 s).
+- **Real block reward**: the reward shown is read from the job's coinbase (v5/v6) instead of a fixed 1.25 ZEC.
+- **Native addon builds on Node 24**: `binding.gyp` no longer forces C++17.
+- **Repository cleanup**: `node_modules/`, build output, runtime state and an unused zcashd source tree are no longer tracked.
 
 ## Recent changes (2025-03-17)
 
