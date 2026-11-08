@@ -67,3 +67,24 @@
 ### API hardening
 
 - Internal error responses no longer expose `e.message` details to clients. Error details are logged server-side only.
+
+## 0.6.0 (2026-11-08)
+
+### NU7
+- NU7 block spacing: effort, luck and time-to-block use 25 s from the node-reported NU7 activation height (75 s before). `pool.blockIntervalSeconds` is now an optional override.
+- Block reward display reads what the job's v5/v6 coinbase pays the pool address (about 0.4167 ZEC after NU7) instead of a fixed "1.25 ZEC"; `pool.blockReward` is the fallback.
+- API `/stats` and `/network` report `blockIntervalSeconds`; `/network` reports `nu7ActivationHeight`. The dashboard uses the API value.
+
+### Bug fixes
+- Fix: the height poll compared `getblockcount` (tip) with the template height (tip + 1), so it never matched and broadcast a clean job every 2 s, rejecting shares and blocks on jobs older than ~2 s as "Job Expired".
+- New blocks are taken from the `getblocktemplate` long poll, with a `getbestblockhash` poll every 2 s as the fallback. A tip-triggered update whose template still builds on the current job's parent is dropped, so miners get one clean job per new tip.
+- A found block now refreshes work only if the tip moved.
+- Fix: hashrate was ~262x low with the example config. One unit of share difficulty is 2^256 / `shareTarget` solutions (262,144 for the default target), not the hand-set `solutionRateScale` (1000). Miner/pool hashrate, effort and time-to-block now use the target-derived value; `pool.solutionRateScale` is ignored with a startup warning.
+- Fix: hashrate read low for several minutes after every (re)connect, because the window estimate divided by the full window and the EWMA started from a seed. Both are now normalised by the time the connection has actually been mining (30 s floor), so a steady miner reads its true rate from the first minute; long-connected miners are unchanged.
+- Fix: shares were rejected as "Low Diff" when they arrived more than 30 s after a VarDiff raise on a job sent before it. A miner keeps working its job until a clean job arrives, which is once per tip now. Each miner's jobs now record the target they were sent with. A share is judged at the easier of that target and the current one, and credited at the matching difficulty. This replaces the 30 s grace window.
+- Fix: share difficulty (best share per miner, all-time best, `Share Accepted ... diff=`) was measured against `shareTarget` (0x00003fff...), so it read 32x lower than miners and network difficulty. Zcash difficulty 1 is the powLimit (mainnet 0x0007ffff...). Share difficulty is now powLimit / hash, which compares directly with network difficulty. A persisted all-time best share is re-scored from its hash on startup. VarDiff/assigned difficulty and its config keys are unchanged.
+- Native addon: `binding.gyp` no longer forces `-std=c++17` (Node 24's V8 headers need C++20).
+
+### Other
+- Unit tests (`npm test`, node:test).
+- `node_modules/`, native build output, `pool-state.json` and the unused `zcash/` source tree are no longer tracked; `.gitignore` added.

@@ -7,6 +7,9 @@ const StratumServer = require("./lib/stratumServer");
 const WorkManager = require("./lib/workManager");
 const ApiServer = require("./lib/apiServer");
 const WebGuiServer = require("./lib/webguiServer");
+const JobUpdater = require("./lib/jobUpdater");
+const LongPollWatcher = require("./lib/longPoll");
+const chain = require("./lib/chain");
 const { Logger } = require("./lib/logger");
 
 class ZCashSoloPool {
@@ -41,9 +44,16 @@ class ZCashSoloPool {
     this.recentBlockSubmissions = new Map();
     const dedupWindow = Number(this.config.pool && this.config.pool.blockSubmitDedupWindowMs);
     this.blockSubmitDedupWindowMs = Number.isFinite(dedupWindow) && dedupWindow >= 0 ? dedupWindow : 120000;
-    this.jobUpdateInFlight = null;
-    this.jobUpdateQueued = false;
-    this.jobUpdateQueuedClean = false;
+    this.jobUpdater = new JobUpdater({
+      fetchTemplate: () => this.rpc.getBlockTemplate(),
+      buildJob: (clean, template) => this.wm.generateJob(clean, template),
+      currentJob: () => this.wm.getCurrentJob(),
+      broadcast: (job) => {
+        this.stratum.broadcastJob(job);
+        this.logger.info(`>>> Job Broadcast: Height ${job.height} | txs ${(job.template.transactions || []).length}${job.cleanJobs ? " | clean" : ""}`);
+      },
+      logger: this.logger,
+    });
     this.minerPing = this.buildMinerPingConfig(this.config.pool || {});
     this.pingSweepInFlight = false;
     this.pingCommandUnavailable = false;
@@ -106,7 +116,10 @@ class ZCashSoloPool {
         this.stats.blockSubmitsRejected = saved.totals.blockSubmitsRejected || 0;
       }
       if (saved.allTimeBestShare && saved.allTimeBestShare.difficulty > 0) {
-        this.allTimeBestShare = saved.allTimeBestShare;
+        // Re-score from the hash: state saved before 0.6.0 holds share-target units.
+        const best = saved.allTimeBestShare;
+        const rescored = chain.shareDifficulty(best.hash, best.chain);
+        this.allTimeBestShare = rescored ? { ...best, difficulty: rescored } : best;
       }
       if (Array.isArray(saved.blockHistory)) {
         this.blockHistory = saved.blockHistory;
@@ -173,16 +186,26 @@ class ZCashSoloPool {
     );
   }
 
+  // Reward shown for the current job: what its coinbase pays the pool address.
   getBlockReward() {
-    const height = this.cachedNetwork ? this.cachedNetwork.blocks : null;
-    if (!height) return "1.25 ZEC";
-    // Zcash halving every 1,050,000 blocks (post-Blossom), first halving at block 1,046,400
-    // Initial subsidy 12.5 ZEC (pre-Blossom equivalent), halved to 6.25, then 3.125, then 1.5625...
-    // After NU5 the miner share is 80% of the block subsidy
-    // Current era (halving 2): base subsidy = 3.125 ZEC, miner gets 80% = 2.5 ZEC
-    // But with the second halving the subsidy is 1.5625, miner gets 80% = 1.25 ZEC
-    // For simplicity, use the configured or default value
-    return (this.config.pool && this.config.pool.blockReward) || "1.25 ZEC";
+    const job = this.wm.getCurrentJob();
+    const fromCoinbase = job ? chain.formatZec(job.minerRewardZat) : null;
+    return fromCoinbase || (this.config.pool && this.config.pool.blockReward) || "--";
+  }
+
+  rewardForResult(res) {
+    return (res && chain.formatZec(res.minerRewardZat)) || this.getBlockReward();
+  }
+
+  // Target block spacing in seconds: pool.blockIntervalSeconds when set, else 75 s
+  // before the node-reported NU7 activation height and 25 s from it on.
+  getBlockIntervalSeconds() {
+    const override = Number(this.config.pool && this.config.pool.blockIntervalSeconds);
+    if (Number.isFinite(override) && override > 0) return override;
+    const job = this.wm.getCurrentJob();
+    const info = this.cachedNetwork;
+    const height = job ? job.height : (info && Number.isFinite(Number(info.blocks)) ? Number(info.blocks) + 1 : null);
+    return chain.targetBlockSeconds(height, chain.nu7ActivationHeight(info));
   }
 
   getNetworkRateSource() {
@@ -302,12 +325,6 @@ class ZCashSoloPool {
     }
   }
 
-  computeShareDifficulty(client, shareQuality) {
-    const base = this.parsePositiveNumber(client && client.currentDifficulty) || 0;
-    const quality = this.parsePositiveNumber(shareQuality) || 1;
-    return base * quality;
-  }
-
   formatScaledNumber(value, decimals = 3) {
     const n = Number(value);
     if (!Number.isFinite(n)) return "n/a";
@@ -414,8 +431,8 @@ class ZCashSoloPool {
       difficultyText: this.formatDifficulty(client.currentDifficulty),
       hashrate,
       hashrateText: this.formatSolutionsRate(hashrate),
-      hashrateEwma: Math.round(m.ewmaHashrate || 0),
-      hashrateEwmaText: this.formatSolutionsRate(m.ewmaHashrate || 0),
+      hashrateEwma: Math.round(this.stratum.ewmaHashrate(client)),
+      hashrateEwmaText: this.formatSolutionsRate(this.stratum.ewmaHashrate(client)),
       solutionRate: hashrate,
       solutionRateText: this.formatSolutionsRate(hashrate),
       connectedAt: client.connectedAt ? new Date(client.connectedAt).toISOString() : null,
@@ -451,44 +468,14 @@ class ZCashSoloPool {
     return miner;
   }
 
-  async updateJob(clean) {
-    const requestedClean = clean === true;
+  // Forced update (startup, periodic refresh): always sends a job.
+  updateJob(clean) {
+    return this.jobUpdater.update({ clean: clean === true });
+  }
 
-    if (this.jobUpdateInFlight) {
-      this.jobUpdateQueued = true;
-      if (requestedClean) this.jobUpdateQueuedClean = true;
-      return this.jobUpdateInFlight;
-    }
-
-    this.jobUpdateInFlight = (async () => {
-      let runAnother = true;
-      let forceClean = requestedClean;
-
-      while (runAnother) {
-        try {
-          const job = await this.wm.generateJob(forceClean);
-          this.stratum.broadcastJob(job);
-          this.logger.info(`>>> Job Broadcast: Height ${job.height} | txs ${(job.template.transactions || []).length}`);
-        } catch (err) {
-          this.logger.error(`[UpdateJob] generateJob failed: ${err.message}`);
-          break;
-        }
-
-        runAnother = this.jobUpdateQueued;
-        forceClean = this.jobUpdateQueuedClean;
-        this.jobUpdateQueued = false;
-        this.jobUpdateQueuedClean = false;
-      }
-    })();
-
-    const inflight = this.jobUpdateInFlight;
-    try {
-      await inflight;
-    } finally {
-      // Identity check prevents a concurrent caller from nulling out a
-      // newer in-flight promise if two callers race through here.
-      if (this.jobUpdateInFlight === inflight) this.jobUpdateInFlight = null;
-    }
+  // Sends a clean job only if the template builds on a new tip.
+  updateJobForNewTip(template = null) {
+    return this.jobUpdater.update({ clean: true, newTipOnly: true, template });
   }
 
   async submitBlockCandidate(res) {
@@ -528,11 +515,11 @@ class ZCashSoloPool {
         this.stats.lastBlockSubmitResult = "accepted";
         this.stats.lastBlockWorker = minerLabel;
         this.stats.lastBlockHeight = res.height || (this.wm.getCurrentJob() ? this.wm.getCurrentJob().height : null);
-        this.stats.lastBlockReward = this.getBlockReward();
+        this.stats.lastBlockReward = this.rewardForResult(res);
         // Calculate per-block luck at find time
         const poolRate = this.getPoolSolutionRate();
         const netRate = this.getNetworkSolutionRate();
-        const blockInterval = (this.config.pool && this.config.pool.blockIntervalSeconds) || 75;
+        const blockInterval = this.getBlockIntervalSeconds();
         let effortPercent = null;
         if (poolRate > 0 && netRate > 0) {
           const expectedSeconds = (netRate / poolRate) * blockInterval;
@@ -545,7 +532,7 @@ class ZCashSoloPool {
           hash: res.hash,
           difficulty: blockDifficulty,
           difficultyText: this.formatDifficulty(blockDifficulty),
-          reward: this.getBlockReward(),
+          reward: this.rewardForResult(res),
           worker: minerLabel,
           at: new Date().toISOString(),
           submitResult: "accepted",
@@ -674,13 +661,14 @@ class ZCashSoloPool {
           this.stats.shares++;
           this.stats.lastShareAt = new Date().toISOString();
           this.stratum.respondSubmit(submission.client, submission.requestId, true, null);
-          const shareDifficulty = this.computeShareDifficulty(submission.client, res.shareQuality);
+          const assignedDifficulty = res.assignedDifficulty || submission.client.currentDifficulty;
+          const shareDifficulty = chain.shareDifficulty(res.hash, this.cachedNetwork && this.cachedNetwork.chain);
           this.stratum.recordShareOutcome(submission.client, {
             accepted: true,
             hash: res.hash,
             shareDifficulty,
             foundDifficulty: foundDiff,
-            assignedDifficulty: submission.client.currentDifficulty,
+            assignedDifficulty,
           });
 
           const retarget = this.stratum.noteAcceptedShare(submission.client);
@@ -698,6 +686,7 @@ class ZCashSoloPool {
               hash: res.hash || null,
               worker: workerName,
               at: new Date().toISOString(),
+              chain: (this.cachedNetwork && this.cachedNetwork.chain) || null,
             };
             this.logger.info(
               `[AllTimeBest] New all-time best share! diff=${this.formatDifficulty(effectiveShareDiff)} worker=${workerName} hash=${(res.hash || "").substring(0, 16)}`
@@ -736,7 +725,8 @@ class ZCashSoloPool {
               });
             }
 
-            await this.updateJob(true);
+            // An accepted block moves the tip; a rejected one leaves miners on the current job.
+            await this.updateJobForNewTip();
           }
         } else {
           this.stats.rejectedShares++;
@@ -762,19 +752,29 @@ class ZCashSoloPool {
     this.webgui.start();
     await this.updateJob(true);
 
+    // New blocks: the getblocktemplate long poll delivers them as soon as zebrad
+    // has them; a cheap getbestblockhash poll every 2 s is the fallback.
+    this.longPoll = new LongPollWatcher({
+      getTemplate: (longpollid) => this.rpc.getBlockTemplate({ longpollid, timeoutMs: 300000 }),
+      onTemplate: async (template) => {
+        if (chain.tipChanged(template.previousblockhash, this.wm.getCurrentJob())) {
+          this.logger.info(`[Network] New tip via long poll: height ${template.height}`);
+        }
+        await this.updateJobForNewTip(template);
+      },
+      logger: this.logger,
+    });
+    this.longPoll.start();
+
     setInterval(async () => {
       try {
-        // Use lightweight getblockcount (returns a single integer) instead of the full
-        // getblocktemplate payload just to detect height changes. updateJob fetches the
-        // full template only when the height actually advances.
-        const height = await this.rpc.getBlockCount();
-        const curr = this.wm.getCurrentJob();
-        if (!curr || height !== curr.height) {
-          this.logger.info(`[Network] New Height: ${height}`);
-          await this.updateJob(true);
+        const best = await this.rpc.getBestBlockHash();
+        if (chain.tipChanged(best, this.wm.getCurrentJob())) {
+          this.logger.info(`[Network] New tip via poll: ${String(best).substring(0, 16)}`);
+          await this.updateJobForNewTip();
         }
       } catch (err) {
-        this.logger.warn(`[Network] Height poll failed: ${err.message}`);
+        this.logger.warn(`[Network] Tip poll failed: ${err.message}`);
       }
     }, 2000);
 
@@ -875,6 +875,8 @@ class ZCashSoloPool {
         effortPercent: b.effortPercent ?? null,
       })),
       averageLuck: this.computeAverageLuck(),
+      blockIntervalSeconds: this.getBlockIntervalSeconds(),
+      blockReward: this.getBlockReward(),
       networkDifficulty: this.cachedNetwork ? this.cachedNetwork.difficulty : null,
       networkDifficultyText: this.formatDifficulty(this.cachedNetwork && this.cachedNetwork.difficulty),
       networkHashrate: this.getNetworkSolutionRate(this.cachedNetwork),
@@ -913,6 +915,8 @@ class ZCashSoloPool {
       node: this.getNodeStatus(info),
       verificationProgress: info.verificationprogress,
       bestBlockHash: info.bestblockhash,
+      blockIntervalSeconds: this.getBlockIntervalSeconds(),
+      nu7ActivationHeight: chain.nu7ActivationHeight(info),
     };
   }
 

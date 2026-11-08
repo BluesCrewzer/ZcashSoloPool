@@ -1,0 +1,11 @@
+# Dependencies and native build output (rebuilt by `npm install`)
+node_modules/
+native/equihashverify/build/
+
+# Local runtime files: never commit (they hold miner IPs, worker names, payout data)
+config.json
+pool.log
+pool-*.log
+logs/*.log
+pool-state.json
+pool-state.json.tmp

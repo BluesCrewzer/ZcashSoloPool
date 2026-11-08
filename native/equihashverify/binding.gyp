@@ -13,7 +13,6 @@
             ],
             "defines": [],
             "cflags_cc": [
-                "-std=c++17",
                 "-fPIC"
             ],
             "link_settings": {
