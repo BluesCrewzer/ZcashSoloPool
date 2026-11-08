@@ -179,13 +179,17 @@ const formatHashesMaybe = (value) => {
   return formatted === "--" ? undefined : formatted;
 };
 
-// Zcash block interval is 75 seconds.
+// Target block spacing: the pool API's height-aware value (25 s since NU7),
+// then a dashboard config override, then the NU7 spacing.
+function getBlockIntervalSeconds(data) {
+  return Number(data?.blockIntervalSeconds) || Number(getDashboardConfig().blockIntervalSeconds) || 25;
+}
+
 // Estimated time to find a block = (networkHashrate / poolHashrate) * blockInterval
 // Returns seconds, or null if inputs are missing.
-function estimateTimeToBlock(poolSolPerSec, networkSolPerSec) {
+function estimateTimeToBlock(poolSolPerSec, networkSolPerSec, blockIntervalSeconds) {
   if (!Number.isFinite(poolSolPerSec) || poolSolPerSec <= 0) return null;
   if (!Number.isFinite(networkSolPerSec) || networkSolPerSec <= 0) return null;
-  const blockIntervalSeconds = Number(getDashboardConfig().blockIntervalSeconds) || 75;
   return (networkSolPerSec / poolSolPerSec) * blockIntervalSeconds;
 }
 
@@ -803,6 +807,7 @@ function normalizePayload(payload) {
         root.secondsSinceLastBlock,
         poolA?.secondsSinceLastBlock
       ),
+      blockIntervalSeconds: pick(root.blockIntervalSeconds, networkA?.blockIntervalSeconds),
       blocks: buildSummaryBlocks(root, blocksA),
       ops: normalizeOperationalData(root),
       node: normalizeNodeData(root, networkA),
@@ -1323,7 +1328,7 @@ function render(data) {
       Number.isFinite(effortNetRate) && effortNetRate > 0 &&
       Number.isFinite(effortUptime) && effortUptime > 0) {
     const cumulativeWork = effortPoolRate * effortUptime;
-    const expectedWork = effortNetRate * (getDashboardConfig().blockIntervalSeconds || 75);
+    const expectedWork = effortNetRate * getBlockIntervalSeconds(data);
     const effortPct = (cumulativeWork / expectedWork) * 100;
     effortEl.textContent = effortPct >= 10 ? `${effortPct.toFixed(1)}%` : `${effortPct.toFixed(3)}%`;
     if (effortBarEl) {
@@ -1348,7 +1353,7 @@ function render(data) {
   // Estimated time to find a block
   const poolSolPerSec = aggregateRate > 0 ? aggregateRate : parseScaledNumber(poolRate);
   const netSolPerSec = parseScaledNumber(data.network?.hashrate);
-  const estSeconds = estimateTimeToBlock(poolSolPerSec, netSolPerSec);
+  const estSeconds = estimateTimeToBlock(poolSolPerSec, netSolPerSec, getBlockIntervalSeconds(data));
   $("#est-time-to-block").textContent = estSeconds !== null ? formatLongDuration(estSeconds) : "--";
   const detailEl = $("#est-time-to-block-detail");
   if (detailEl) {
