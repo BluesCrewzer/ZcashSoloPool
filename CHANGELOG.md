@@ -81,6 +81,7 @@
 - A found block now refreshes work only if the tip moved.
 - Fix: hashrate was ~262x low with the example config. One unit of share difficulty is 2^256 / `shareTarget` solutions (262,144 for the default target), not the hand-set `solutionRateScale` (1000). Miner/pool hashrate, effort and time-to-block now use the target-derived value; `pool.solutionRateScale` is ignored with a startup warning.
 - Fix: hashrate read low for several minutes after every (re)connect, because the window estimate divided by the full window and the EWMA started from a seed. Both are now normalised by the time the connection has actually been mining (30 s floor), so a steady miner reads its true rate from the first minute; long-connected miners are unchanged.
+- Fix: shares were rejected as "Low Diff" when they arrived more than 30 s after a VarDiff raise on a job sent before it. A miner keeps working its job until a clean job arrives, which is once per tip now. Each miner's jobs now record the target they were sent with. A share is judged at the easier of that target and the current one, and credited at the matching difficulty. This replaces the 30 s grace window.
 - Native addon: `binding.gyp` no longer forces `-std=c++17` (Node 24's V8 headers need C++20).
 
 ### Other

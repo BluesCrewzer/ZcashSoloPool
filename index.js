@@ -322,8 +322,8 @@ class ZCashSoloPool {
     }
   }
 
-  computeShareDifficulty(client, shareQuality) {
-    const base = this.parsePositiveNumber(client && client.currentDifficulty) || 0;
+  computeShareDifficulty(assignedDifficulty, shareQuality) {
+    const base = this.parsePositiveNumber(assignedDifficulty) || 0;
     const quality = this.parsePositiveNumber(shareQuality) || 1;
     return base * quality;
   }
@@ -664,13 +664,14 @@ class ZCashSoloPool {
           this.stats.shares++;
           this.stats.lastShareAt = new Date().toISOString();
           this.stratum.respondSubmit(submission.client, submission.requestId, true, null);
-          const shareDifficulty = this.computeShareDifficulty(submission.client, res.shareQuality);
+          const assignedDifficulty = res.assignedDifficulty || submission.client.currentDifficulty;
+          const shareDifficulty = this.computeShareDifficulty(assignedDifficulty, res.shareQuality);
           this.stratum.recordShareOutcome(submission.client, {
             accepted: true,
             hash: res.hash,
             shareDifficulty,
             foundDifficulty: foundDiff,
-            assignedDifficulty: submission.client.currentDifficulty,
+            assignedDifficulty,
           });
 
           const retarget = this.stratum.noteAcceptedShare(submission.client);

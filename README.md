@@ -415,6 +415,7 @@ Additional checks:
 - **NU7 block spacing**: effort, luck and time-to-block use 25 s blocks from the NU7 activation height (they were 3x off with 75 s).
 - **Real block reward**: the reward shown is read from the job's coinbase (v5/v6) instead of a fixed 1.25 ZEC.
 - **Correct hashrate**: miner and pool hashrate (and so effort and time-to-block) are derived from the share target, 2^256 / `shareTarget` solutions per unit of difficulty. With the example config's `solutionRateScale: 1000` they read ~262x low. `solutionRateScale` is ignored now; remove it from `config.json`. Hashrate also reads right from the first minute after a miner (re)connects instead of climbing for ~5-10 minutes.
+- **No low-difficulty rejects after a VarDiff raise**: each share is judged at the target its job was sent with (or the current target, if easier) and credited at that difficulty. This replaces the 30 s grace window, which rejected shares a miner was still finding on a job sent before the raise.
 - **Native addon builds on Node 24**: `binding.gyp` no longer forces C++17.
 - **Repository cleanup**: `node_modules/`, build output, runtime state and an unused zcashd source tree are no longer tracked.
 
