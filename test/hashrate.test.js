@@ -32,15 +32,69 @@ test("a configured solutionRateScale no longer changes the estimate", () => {
   assert.equal(Math.round(s.estimateHashrate(c, 100)), DEFAULT_SOLS_PER_DIFF);
 });
 
-test("EWMA hashrate uses the same solutions-per-difficulty conversion", (t) => {
+// Feeds a steady miner: one share of `diff` every `everySec` seconds for `forSec` seconds.
+function feedSteady(t, s, c, { diff, everySec, forSec }) {
+  for (let elapsed = everySec; elapsed <= forSec; elapsed += everySec) {
+    t.mock.timers.tick(everySec * 1000);
+    s.recordShareOutcome(c, { accepted: true, assignedDifficulty: diff });
+  }
+}
+
+test("EWMA reads a steady miner's true rate one minute after it connects", (t) => {
   t.mock.timers.enable({ apis: ["Date"], now: 1_000_000 });
   const s = new StratumServer({}, quiet);
   const c = client();
-  s.recordShareOutcome(c, { accepted: true, assignedDifficulty: 10 });
-  const seed = (10 * DEFAULT_SOLS_PER_DIFF) / s.vardiff.targetTime;
-  t.mock.timers.tick(10_000);
-  s.recordShareOutcome(c, { accepted: true, assignedDifficulty: 10 });
-  const alpha = 1 - Math.exp(-10 / s.hashrateWindowSeconds);
-  const expected = alpha * ((10 * DEFAULT_SOLS_PER_DIFF) / 10) + (1 - alpha) * seed;
-  assert.ok(Math.abs(c.metrics.ewmaHashrate - expected) < 1e-6 * expected, `${c.metrics.ewmaHashrate} vs ${expected}`);
+  c.connectedAt = Date.now();
+  feedSteady(t, s, c, { diff: 10, everySec: 10, forSec: 60 });
+  // 10 difficulty every 10 s = 1 difficulty/s = 262,144 Sol/s
+  const ewma = s.ewmaHashrate(c);
+  assert.ok(Math.abs(ewma / DEFAULT_SOLS_PER_DIFF - 1) < 0.03, `ewma ${ewma}`);
+});
+
+test("EWMA still reads the true rate for a long-connected miner", (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: 1_000_000 });
+  const s = new StratumServer({}, quiet);
+  const c = client();
+  c.connectedAt = Date.now();
+  feedSteady(t, s, c, { diff: 10, everySec: 10, forSec: 3600 });
+  const ewma = s.ewmaHashrate(c);
+  assert.ok(Math.abs(ewma / DEFAULT_SOLS_PER_DIFF - 1) < 0.03, `ewma ${ewma}`);
+});
+
+test("displayed hashrate is right one minute after connect", (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: 1_000_000 });
+  const s = new StratumServer({}, quiet);
+  const c = client();
+  c.connectedAt = Date.now();
+  feedSteady(t, s, c, { diff: 10, everySec: 10, forSec: 60 });
+  const rate = s.estimateHashrate(c);
+  assert.ok(Math.abs(rate / DEFAULT_SOLS_PER_DIFF - 1) < 0.03, `rate ${rate}`);
+});
+
+function connectedClient(secondsAgo) {
+  const c = client();
+  c.connectedAt = Date.now() - secondsAgo * 1000;
+  return c;
+}
+
+test("a miner connected for less than the window is rated over its connected time", () => {
+  const s = new StratumServer({}, quiet);
+  const c = connectedClient(60);
+  c.metrics.recentAccepted.push({ ts: Date.now() - 1000, difficulty: 60 });
+  // 60 difficulty in the 60 s since connect = 1 difficulty/s, not 60/300
+  assert.equal(Math.round(s.estimateHashrate(c)), DEFAULT_SOLS_PER_DIFF);
+});
+
+test("connected time below 30 s is rated over 30 s", () => {
+  const s = new StratumServer({}, quiet);
+  const c = connectedClient(5);
+  c.metrics.recentAccepted.push({ ts: Date.now() - 1000, difficulty: 30 });
+  assert.equal(Math.round(s.estimateHashrate(c)), DEFAULT_SOLS_PER_DIFF);
+});
+
+test("a miner connected longer than the window is rated over the full window", () => {
+  const s = new StratumServer({}, quiet);
+  const c = connectedClient(3600);
+  c.metrics.recentAccepted.push({ ts: Date.now() - 1000, difficulty: 300 });
+  assert.equal(Math.round(s.estimateHashrate(c)), DEFAULT_SOLS_PER_DIFF);
 });

@@ -80,6 +80,7 @@
 - New blocks are taken from the `getblocktemplate` long poll, with a `getbestblockhash` poll every 2 s as the fallback. A tip-triggered update whose template still builds on the current job's parent is dropped, so miners get one clean job per new tip.
 - A found block now refreshes work only if the tip moved.
 - Fix: hashrate was ~262x low with the example config. One unit of share difficulty is 2^256 / `shareTarget` solutions (262,144 for the default target), not the hand-set `solutionRateScale` (1000). Miner/pool hashrate, effort and time-to-block now use the target-derived value; `pool.solutionRateScale` is ignored with a startup warning.
+- Fix: hashrate read low for several minutes after every (re)connect, because the window estimate divided by the full window and the EWMA started from a seed. Both are now normalised by the time the connection has actually been mining (30 s floor), so a steady miner reads its true rate from the first minute; long-connected miners are unchanged.
 - Native addon: `binding.gyp` no longer forces `-std=c++17` (Node 24's V8 headers need C++20).
 
 ### Other
