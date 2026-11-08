@@ -79,6 +79,7 @@
 - Fix: the height poll compared `getblockcount` (tip) with the template height (tip + 1), so it never matched and broadcast a clean job every 2 s, rejecting shares and blocks on jobs older than ~2 s as "Job Expired".
 - New blocks are taken from the `getblocktemplate` long poll, with a `getbestblockhash` poll every 2 s as the fallback. A tip-triggered update whose template still builds on the current job's parent is dropped, so miners get one clean job per new tip.
 - A found block now refreshes work only if the tip moved.
+- Fix: hashrate was ~262x low with the example config. One unit of share difficulty is 2^256 / `shareTarget` solutions (262,144 for the default target), not the hand-set `solutionRateScale` (1000). Miner/pool hashrate, effort and time-to-block now use the target-derived value; `pool.solutionRateScale` is ignored with a startup warning.
 - Native addon: `binding.gyp` no longer forces `-std=c++17` (Node 24's V8 headers need C++20).
 
 ### Other

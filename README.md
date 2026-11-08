@@ -116,7 +116,6 @@ Minimum required edits:
     "port": 3333,
     "difficulty": 1,
     "shareTarget": "00003fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-    "solutionRateScale": 1000,
     "hashrateWindowSeconds": 300,
     "minerPing": {
       "enabled": false,
@@ -262,8 +261,7 @@ curl http://127.0.0.1:8080/stats
 
 - `host`, `port`: Stratum bind target.
 - `difficulty`: base/initial share difficulty.
-- `shareTarget`: base share target hex (64 chars).
-- `solutionRateScale`: scaling factor for hashrate estimate.
+- `shareTarget`: base share target hex (64 chars). Hashrate is derived from it: one unit of share difficulty is 2^256 / `shareTarget` solutions (262,144 for the default target). The old `solutionRateScale` setting is ignored.
 - `hashrateWindowSeconds`: rolling average window (default `300`).
 - `minerPing.enabled`: enable periodic ICMP ping checks to connected miners.
 - `minerPing.intervalMinutes`: ping sweep interval in minutes.
@@ -416,6 +414,7 @@ Additional checks:
 - **New blocks via long poll**: the pool long-polls `getblocktemplate`, so a new block reaches miners as soon as zebrad has it; a `getbestblockhash` poll every 2 s is the fallback. Miners get one clean job per new tip.
 - **NU7 block spacing**: effort, luck and time-to-block use 25 s blocks from the NU7 activation height (they were 3x off with 75 s).
 - **Real block reward**: the reward shown is read from the job's coinbase (v5/v6) instead of a fixed 1.25 ZEC.
+- **Correct hashrate**: miner and pool hashrate (and so effort and time-to-block) are derived from the share target, 2^256 / `shareTarget` solutions per unit of difficulty. With the example config's `solutionRateScale: 1000` they read ~262x low. `solutionRateScale` is ignored now; remove it from `config.json`.
 - **Native addon builds on Node 24**: `binding.gyp` no longer forces C++17.
 - **Repository cleanup**: `node_modules/`, build output, runtime state and an unused zcashd source tree are no longer tracked.
 

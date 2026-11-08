@@ -11,7 +11,6 @@
     "port": 3333,
     "difficulty": 1,
     "shareTarget": "00003fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-    "solutionRateScale": 1000,
     "hashrateWindowSeconds": 300,
     "minerPing": {
       "enabled": false,

@@ -80,7 +80,7 @@ This file summarizes:
   - Rate contributions originally over-weighted by lucky shares.
 - Fixes:
   - rate now based on assigned share difficulty contributions,
-  - configurable `solutionRateScale` for calibration against miner UI.
+  - configurable `solutionRateScale` for calibration against miner UI (replaced in 0.6.0: the rate is now derived from `shareTarget`, 2^256 / target solutions per difficulty).
 
 ## Why `submitblock rejected` + `proposal accepted` Happens
 This usually means:
@@ -93,7 +93,6 @@ This can happen even in healthy operation and does not always indicate validator
 - `pool.difficulty`, `pool.vardiff.*`: miner share difficulty behavior.
 - `pool.protocolMode`: `zip301` recommended.
 - `pool.notify*` settings: firmware compatibility controls.
-- `pool.solutionRateScale`: hashrate display calibration.
 - `pool.blockSubmitDedupWindowMs`: duplicate block candidate suppression window.
 - `zcash.rpcCookiePath`: node auth requirement.
 - `zcash.walletAddress`: payout/coinbase address (testnet vs mainnet matters).
