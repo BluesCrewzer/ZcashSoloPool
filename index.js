@@ -735,7 +735,9 @@ class ZCashSoloPool {
             accepted: false,
             reason: res.error || "Rejected",
           });
-          this.logger.debug(`Share Rejected: ${res.error || "Unknown"}`);
+          this.logger.info(
+            `Share Rejected: ${res.error || "Unknown"} worker=${submission.client.workerName || `miner-${submission.client.id}`} job=${String(submission.jobId || "n/a").replace(/[\x00-\x1f\x7f]/g, "").slice(0, 64)}`
+          );
         }
       } catch (e) {
         this.stratum.recordShareOutcome(submission.client, {

@@ -88,3 +88,8 @@
 ### Other
 - Unit tests (`npm test`, node:test).
 - `node_modules/`, native build output, `pool-state.json` and the unused `zcash/` source tree are no longer tracked; `.gitignore` added.
+
+## Unreleased
+
+- Rejected shares are logged at info level with the reason, worker and job id (`Share Rejected: <reason> worker=<name> job=<id>`); before, the reason was only logged at debug level.
+- Log lines no longer carry raw miner-supplied text. The authorize line, the `[Stratum][Audit]` line (`pool.submitAudit`) and the debug submit lines strip control characters from the user/worker name, job id, nTime and nonce, and cap the job id at 64 characters. Before, a newline in any of these split the log line, so a miner could write a fake log line.
