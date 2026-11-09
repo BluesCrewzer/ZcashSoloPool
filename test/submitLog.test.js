@@ -53,3 +53,24 @@ test("the audit line shows n/a when the submit names no worker", () => {
   const audit = lines.find((l) => l.startsWith("[Stratum][Audit]"));
   assert.match(audit, /worker=n\/a job=5 /);
 });
+
+test("debug submit lines strip control characters from a non-hex nTime and nonce", () => {
+  const { lines, logger } = capture();
+  const s = new StratumServer({ logSubmissions: true }, logger);
+  s.handleRequest(submitClient(), {
+    id: 3,
+    method: "mining.submit",
+    params: ["rig", "5", "zz\nFAKE NTIME", "yy\nFAKE NONCE", "fd4005" + "00".repeat(1344)],
+  });
+  assert.ok(lines.some((l) => l.includes("nTime=zzfake ntime")), lines.join(" | "));
+  for (const l of lines) assert.doesNotMatch(l, /[\x00-\x1f\x7f]/, l);
+});
+
+test("the authorize log line strips control characters from the user name", () => {
+  const { lines, logger } = capture();
+  const s = new StratumServer({}, logger);
+  s.handleRequest(submitClient(), { id: 2, method: "mining.authorize", params: ["rig\nFAKE LINE", "x"] });
+  const auth = lines.find((l) => l.startsWith("[Stratum] Authorize request"));
+  assert.ok(auth, lines.join(" | "));
+  assert.match(auth, /user=rigFAKE LINE$/);
+});
