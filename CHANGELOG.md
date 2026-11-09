@@ -92,3 +92,4 @@
 ## Unreleased
 
 - Rejected shares are logged at info level with the reason, worker and job id (`Share Rejected: <reason> worker=<name> job=<id>`); before, the reason was only logged at debug level.
+- The `[Stratum][Audit]` line (`pool.submitAudit`) and the debug submit lines strip control characters from the worker name and job id, and cap the job id at 64 characters. A job id containing a newline could split a log line.
